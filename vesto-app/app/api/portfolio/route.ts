@@ -63,24 +63,58 @@ export async function POST(request: Request) {
       );
     }
 
-    const holding = await addToPortfolio({
-      user_id: userId,
-      symbol,
-      company_name: companyName,
-      shares,
-      buy_price: buyPrice,
-      buy_date: new Date().toISOString(),
-      current_price: buyPrice,
-      current_value: shares * buyPrice,
-      gain_loss: 0,
-      gain_loss_percent: 0
-    });
+    // Get authenticated user from server-side client
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized', details: 'Please log in to add to portfolio' },
+        { status: 401 }
+      );
+    }
+
+    // Verify the userId matches the authenticated user
+    if (user.id !== userId) {
+      return NextResponse.json(
+        { error: 'Forbidden', details: 'User ID mismatch' },
+        { status: 403 }
+      );
+    }
+
+    // Add to portfolio using server-side client
+    const { data: holding, error } = await supabase
+      .from('user_portfolios')
+      .upsert({
+        user_id: userId,
+        symbol,
+        company_name: companyName,
+        shares,
+        buy_price: buyPrice,
+        buy_date: new Date().toISOString(),
+        current_price: buyPrice,
+        current_value: shares * buyPrice,
+        gain_loss: 0,
+        gain_loss_percent: 0
+      }, {
+        onConflict: 'user_id,symbol'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding to portfolio:', error);
+      throw error;
+    }
 
     return NextResponse.json({ data: holding });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error adding to portfolio:', error);
     return NextResponse.json(
-      { error: 'Failed to add to portfolio' },
+      { 
+        error: 'Failed to add to portfolio',
+        details: error?.message || 'Unknown error'
+      },
       { status: 500 }
     );
   }
