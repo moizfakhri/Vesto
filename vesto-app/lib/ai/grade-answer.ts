@@ -10,22 +10,30 @@ export async function gradeAnswer(
   const prompt = buildGradingPrompt(question, studentAnswer, context);
   
   try {
+    console.log('Grading answer with prompt length:', prompt.length);
     const result = await generateJSON(prompt);
+    
+    // Validate the result structure
+    if (!result || typeof result !== 'object') {
+      throw new Error('Invalid response format from AI');
+    }
+    
+    // Ensure all required fields exist
+    if (typeof result.overall_score !== 'number' || !result.criteria) {
+      throw new Error('Missing required fields in AI response');
+    }
+    
     return result as AIFeedback;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error grading answer:', error);
-    // Return default feedback if AI fails
-    return {
-      overall_score: 50,
-      criteria: {
-        clarity: { score: 10, feedback: 'Unable to grade automatically' },
-        evidence: { score: 10, feedback: 'Unable to grade automatically' },
-        completeness: { score: 10, feedback: 'Unable to grade automatically' },
-        critical_thinking: { score: 10, feedback: 'Unable to grade automatically' },
-        risk_analysis: { score: 10, feedback: 'Unable to grade automatically' }
-      },
-      summary: 'Automatic grading failed. Please try again.'
-    };
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    });
+    
+    // Re-throw the error so the API route can handle it properly
+    throw new Error(`Grading failed: ${error?.message || 'Unknown error'}`);
   }
 }
 

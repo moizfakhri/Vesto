@@ -908,10 +908,17 @@ export default function ModulePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to grade answer');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.details || errorData.error || 'Failed to grade answer';
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      
+      if (!result.data || !result.data.feedback) {
+        throw new Error(result.error || 'Invalid response from server');
+      }
+      
       const aiFeedback = result.data.feedback;
       
       const newFeedback = {
@@ -921,12 +928,13 @@ export default function ModulePage() {
       
       setFeedback(newFeedback);
       // Progress will be auto-saved via useEffect
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error grading written answer:', error);
+      const errorMessage = error?.message || 'Failed to grade answer. Please try again.';
       setFeedback({
         ...feedback,
         [questionId]: {
-          error: 'Failed to grade answer. Please try again.',
+          error: errorMessage,
           overall_score: 0
         }
       });
