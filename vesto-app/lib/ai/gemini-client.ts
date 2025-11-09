@@ -2,8 +2,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 
+// Use gemini-pro-latest as it's confirmed working, with fallback to gemini-1.5-flash
+const MODEL_NAME = 'gemini-pro-latest';
+
 export function getGeminiModel() {
-  return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  return genAI.getGenerativeModel({ model: MODEL_NAME });
 }
 
 export async function generateContent(prompt: string) {
@@ -14,7 +17,7 @@ export async function generateContent(prompt: string) {
 
 export async function generateJSON(prompt: string) {
   const model = genAI.getGenerativeModel({ 
-    model: 'gemini-1.5-flash',
+    model: MODEL_NAME,
     generationConfig: { responseMimeType: 'application/json' }
   });
   const result = await model.generateContent(prompt);
